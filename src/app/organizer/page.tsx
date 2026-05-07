@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
 type Powwow = {
@@ -20,6 +21,7 @@ export default function OrganizerPage() {
   const [powwows, setPowwows] = useState<Powwow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   const [powwow, setPowwow] = useState({
     name: "",
@@ -33,23 +35,44 @@ export default function OrganizerPage() {
     poster_url: "",
   });
 
-  useEffect(() => {
-    fetchPowwows();
-  }, []);
+ useEffect(() => {
+  checkUser();
+}, []);
 
-  const fetchPowwows = async () => {
-    const { data, error } = await supabase
-      .from("powwows")
-      .select("*")
-      .order("date", { ascending: true });
+const checkUser = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
-    } else {
-      setPowwows(data || []);
-    }
-  };
+  if (!user) {
+    window.location.href = "/login";
+    return;
+  }
+
+  setUser(user);
+  fetchPowwows();
+};
+
+ const fetchPowwows = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from("powwows")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    alert(error.message);
+  } else {
+    setPowwows(data || []);
+  }
+};
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -100,10 +123,15 @@ export default function OrganizerPage() {
       posterUrl = data.publicUrl;
     }
 
-    const powwowData = {
-      ...powwow,
-      poster_url: posterUrl,
-    };
+   const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+const powwowData = {
+  ...powwow,
+  poster_url: posterUrl,
+  user_id: user?.id,
+};
 
     if (editingId) {
       const { error } = await supabase
@@ -171,7 +199,29 @@ export default function OrganizerPage() {
 
   return (
     <main className="min-h-screen bg-black text-white p-6">
-      <h1 className="text-4xl font-bold mb-4">Organizer Dashboard</h1>
+      <div className="flex justify-between items-center mb-6">
+  <div>
+    <h1 className="text-4xl font-bold">
+      Organizer Dashboard
+    </h1>
+
+    {user && (
+      <p className="text-gray-400 mt-1">
+        Logged in as: {user.email}
+      </p>
+    )}
+  </div>
+
+  <button
+    onClick={async () => {
+      await supabase.auth.signOut();
+      location.reload();
+    }}
+    className="border border-gray-600 px-4 py-2 rounded-lg"
+  >
+    Logout
+  </button>
+</div>
 
       <section className="border border-gray-700 rounded-xl p-6 max-w-3xl mb-10">
         <h2 className="text-2xl font-semibold mb-4">
