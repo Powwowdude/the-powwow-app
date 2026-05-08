@@ -13,22 +13,28 @@ export default function Navbar() {
     checkUser();
   }, []);
 
-  const checkUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+ const checkUser = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    setUser(user);
-    const { data: profile } = await supabase
-  .from("profiles")
-  .select("role")
-  .eq("id", user.id)
-  .single();
+  setUser(user);
 
-if (profile) {
-  setRole(profile.role);
-}
-  };
+  if (!user) {
+    setRole("");
+    return;
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile) {
+    setRole(profile.role);
+  }
+};
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -58,6 +64,16 @@ if (profile) {
           {role === "organizer" && (
   <Link href="/organizer">
     Organizer
+  </Link>
+)}
+{role === "vendor" && (
+  <Link href="/vendor">
+    Vendor
+  </Link>
+)}
+{role === "dancer" && (
+  <Link href="/dancer">
+    Dancer
   </Link>
 )}
 
