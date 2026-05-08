@@ -23,6 +23,7 @@ export default function PowwowsPage() {
   const [countryFilter, setCountryFilter] = useState("");
   const [stateFilter, setStateFilter] = useState("");
  const [user, setUser] = useState<User | null>(null);
+ const [role, setRole] = useState("");
 const [favoriteIds, setFavoriteIds] = useState<number[]>([]); 
 
   useEffect(() => {
@@ -35,6 +36,17 @@ const checkUser = async () => {
   } = await supabase.auth.getUser();
 
   setUser(user);
+  if (user) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile) {
+    setRole(profile.role);
+  }
+}
 
   if (user) {
     fetchFavorites(user.id);
@@ -182,6 +194,37 @@ const checkUser = async () => {
     {favoriteIds.includes(powwow.id)
       ? "❤️ Saved"
       : "🤍 Save Powwow"}
+  </button>
+)}
+{role === "organizer" && (
+  <button
+    onClick={async () => {
+      const message = prompt(
+        "Why are you claiming this powwow?"
+      );
+
+      if (!message || !user) return;
+
+      const { error } = await supabase
+        .from("powwow_claims")
+        .insert([
+          {
+            powwow_id: powwow.id,
+            user_id: user.id,
+            message,
+          },
+        ]);
+
+      if (error) {
+        console.error(error);
+        alert(error.message);
+      } else {
+        alert("Claim submitted successfully!");
+      }
+    }}
+    className="mt-3 border border-yellow-500 text-yellow-400 px-4 py-2 rounded-lg block"
+  >
+    Claim This Powwow
   </button>
 )}
             </div>

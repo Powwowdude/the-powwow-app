@@ -76,6 +76,7 @@ if (data.user) {
   <option value="organizer">Organizer</option>
   <option value="vendor">Vendor</option>
   <option value="drum_group">Drum Group</option>
+  <option value="admin">Admin</option>
 </select>
 
           <button

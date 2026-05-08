@@ -8,33 +8,36 @@ import { User } from "@supabase/supabase-js";
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState("");
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     checkUser();
   }, []);
 
- const checkUser = async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const checkUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  setUser(user);
+    setUser(user);
 
-  if (!user) {
-    setRole("");
-    return;
-  }
+    if (!user) {
+      setRole("");
+      setVerified(false);
+      return;
+    }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, verified")
+      .eq("id", user.id)
+      .single();
 
-  if (profile) {
-    setRole(profile.role);
-  }
-};
+    if (profile) {
+      setRole(profile.role);
+      setVerified(profile.verified);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -55,25 +58,35 @@ export default function Navbar() {
           <Link href="/powwows">
             Powwows
           </Link>
+
           {user && (
-  <Link href="/saved">
-    Saved
-  </Link>
-)}
+            <Link href="/saved">
+              Saved
+            </Link>
+          )}
 
           {role === "organizer" && (
-  <Link href="/organizer">
-    Organizer
-  </Link>
-)}
-{role === "vendor" && (
-  <Link href="/vendor">
-    Vendor
-  </Link>
-)}
-{role === "dancer" && (
-  <Link href="/dancer">
-    Dancer
+            <Link href="/organizer">
+              Organizer
+              {verified && " ✓"}
+            </Link>
+          )}
+
+          {role === "vendor" && (
+            <Link href="/vendor">
+              Vendor
+            </Link>
+          )}
+
+          {role === "dancer" && (
+            <Link href="/dancer">
+              Dancer
+            </Link>
+          )}
+
+          {role === "admin" && (
+  <Link href="/admin">
+    Admin
   </Link>
 )}
 

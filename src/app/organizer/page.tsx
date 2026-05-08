@@ -20,6 +20,7 @@ type Powwow = {
 
 export default function OrganizerPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [verified, setVerified] = useState(false);
   const [powwows, setPowwows] = useState<Powwow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
@@ -52,7 +53,7 @@ export default function OrganizerPage() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, verified")
       .eq("id", user.id)
       .single();
 
@@ -60,6 +61,7 @@ export default function OrganizerPage() {
       window.location.href = "/";
       return;
     }
+    setVerified(profile.verified);
 
     setUser(user);
     fetchPowwows(user.id);
@@ -214,7 +216,9 @@ export default function OrganizerPage() {
   return (
     <main className="min-h-screen bg-black text-white p-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold">Organizer Dashboard</h1>
+        <h1 className="text-4xl font-bold">
+  Organizer Dashboard {verified && "✓"}
+</h1>
 
         {user && (
           <p className="text-gray-400 mt-2">
