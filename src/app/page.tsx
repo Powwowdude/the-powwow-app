@@ -1,6 +1,43 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+
+type Powwow = {
+  id: number;
+  name: string;
+  city: string;
+  state_province: string;
+  country: string;
+  poster_url: string;
+  date: string;
+};
 
 export default function HomePage() {
+  const [featuredPowwows, setFeaturedPowwows] = useState<Powwow[]>([]);
+
+  useEffect(() => {
+    fetchPowwows();
+  }, []);
+
+  const fetchPowwows = async () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data, error } = await supabase
+      .from("powwows")
+      .select("*")
+      .gte("date", today)
+      .order("date", { ascending: true })
+      .limit(3);
+
+    if (error) {
+      console.error(error);
+    } else {
+      setFeaturedPowwows(data || []);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-black text-white">
       <section className="relative overflow-hidden">
@@ -30,6 +67,51 @@ export default function HomePage() {
               Organizer Dashboard
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="border-t border-gray-800">
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <h2 className="text-4xl font-bold mb-12 text-center">
+            Featured Powwows
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {featuredPowwows.map((powwow) => (
+              <div
+                key={powwow.id}
+                className="overflow-hidden border border-gray-700 rounded-2xl bg-gray-900"
+              >
+                {powwow.poster_url && (
+                  <img
+                    src={powwow.poster_url}
+                    alt={powwow.name}
+                    className="w-full h-72 object-cover"
+                  />
+                )}
+
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold mb-2">
+                    {powwow.name}
+                  </h3>
+
+                  <p className="text-gray-300">
+                    📍 {powwow.city}, {powwow.state_province}
+                  </p>
+
+                  <p className="text-gray-400 mt-2">
+                    📅 {powwow.date}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {featuredPowwows.length === 0 && (
+            <p className="text-center text-gray-400">
+              No upcoming powwows listed yet.
+            </p>
+          )}
         </div>
       </section>
 

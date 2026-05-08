@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
+import { User } from "@supabase/supabase-js";
 
 type Powwow = {
   id: number;
@@ -15,13 +15,14 @@ type Powwow = {
   contact: string;
   description: string;
   poster_url: string;
+  user_id?: string;
 };
 
 export default function OrganizerPage() {
+  const [user, setUser] = useState<User | null>(null);
   const [powwows, setPowwows] = useState<Powwow[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [user, setUser] = useState<User | null>(null);
 
   const [powwow, setPowwow] = useState({
     name: "",
@@ -35,44 +36,49 @@ export default function OrganizerPage() {
     poster_url: "",
   });
 
- useEffect(() => {
-  checkUser();
-}, []);
+  useEffect(() => {
+    checkUser();
+  }, []);
 
-const checkUser = async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const checkUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    window.location.href = "/login";
-    return;
-  }
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
 
-  setUser(user);
-  fetchPowwows();
-};
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
 
- const fetchPowwows = async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (!profile || profile.role !== "organizer") {
+      window.location.href = "/";
+      return;
+    }
 
-  if (!user) return;
+    setUser(user);
+    fetchPowwows(user.id);
+  };
 
-  const { data, error } = await supabase
-    .from("powwows")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: true });
+  const fetchPowwows = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("powwows")
+      .select("*")
+      .eq("user_id", userId)
+      .order("date", { ascending: true });
 
-  if (error) {
-    console.error(error);
-    alert(error.message);
-  } else {
-    setPowwows(data || []);
-  }
-};
+    if (error) {
+      console.error(error);
+      alert(error.message);
+    } else {
+      setPowwows(data || []);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -101,6 +107,11 @@ const checkUser = async () => {
   };
 
   const handleSubmit = async () => {
+    if (!user) {
+      alert("You must be logged in as an organizer.");
+      return;
+    }
+
     let posterUrl = powwow.poster_url;
 
     if (posterFile) {
@@ -123,21 +134,18 @@ const checkUser = async () => {
       posterUrl = data.publicUrl;
     }
 
-   const {
-  data: { user },
-} = await supabase.auth.getUser();
-
-const powwowData = {
-  ...powwow,
-  poster_url: posterUrl,
-  user_id: user?.id,
-};
+    const powwowData = {
+      ...powwow,
+      poster_url: posterUrl,
+      user_id: user.id,
+    };
 
     if (editingId) {
       const { error } = await supabase
         .from("powwows")
         .update(powwowData)
-        .eq("id", editingId);
+        .eq("id", editingId)
+        .eq("user_id", user.id);
 
       if (error) {
         console.error(error);
@@ -145,7 +153,7 @@ const powwowData = {
       } else {
         alert("Powwow updated successfully!");
         resetForm();
-        fetchPowwows();
+        fetchPowwows(user.id);
       }
 
       return;
@@ -159,7 +167,7 @@ const powwowData = {
     } else {
       alert("Powwow saved successfully!");
       resetForm();
-      fetchPowwows();
+      fetchPowwows(user.id);
     }
   };
 
@@ -180,48 +188,40 @@ const powwowData = {
   };
 
   const handleDelete = async (id: number) => {
+    if (!user) return;
+
     const confirmDelete = confirm(
       "Are you sure you want to delete this powwow?"
     );
 
     if (!confirmDelete) return;
 
-    const { error } = await supabase.from("powwows").delete().eq("id", id);
+    const { error } = await supabase
+      .from("powwows")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
 
     if (error) {
       console.error(error);
       alert(error.message);
     } else {
       alert("Powwow deleted successfully!");
-      fetchPowwows();
+      fetchPowwows(user.id);
     }
   };
 
   return (
     <main className="min-h-screen bg-black text-white p-6">
-      <div className="flex justify-between items-center mb-6">
-  <div>
-    <h1 className="text-4xl font-bold">
-      Organizer Dashboard
-    </h1>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold">Organizer Dashboard</h1>
 
-    {user && (
-      <p className="text-gray-400 mt-1">
-        Logged in as: {user.email}
-      </p>
-    )}
-  </div>
-
-  <button
-    onClick={async () => {
-      await supabase.auth.signOut();
-      location.reload();
-    }}
-    className="border border-gray-600 px-4 py-2 rounded-lg"
-  >
-    Logout
-  </button>
-</div>
+        {user && (
+          <p className="text-gray-400 mt-2">
+            Logged in as: {user.email}
+          </p>
+        )}
+      </div>
 
       <section className="border border-gray-700 rounded-xl p-6 max-w-3xl mb-10">
         <h2 className="text-2xl font-semibold mb-4">
@@ -343,9 +343,11 @@ const powwowData = {
               )}
 
               <h3 className="text-xl font-semibold">{item.name}</h3>
+
               <p className="text-gray-300">
                 {item.city}, {item.state_province}, {item.country}
               </p>
+
               <p className="text-gray-400">{item.date}</p>
 
               <div className="flex gap-3 mt-4">

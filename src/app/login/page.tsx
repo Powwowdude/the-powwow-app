@@ -6,12 +6,23 @@ import { supabase } from "../../lib/supabase";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("dancer");
 
   const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
+  email,
+  password,
+});
+
+if (data.user) {
+  await supabase.from("profiles").insert([
+    {
+      id: data.user.id,
       email,
-      password,
-    });
+      role,
+    },
+  ]);
+}
 
     if (error) {
       alert(error.message);
@@ -56,6 +67,16 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="p-3 rounded bg-black border border-gray-700"
           />
+          <select
+  value={role}
+  onChange={(e) => setRole(e.target.value)}
+  className="p-3 rounded bg-black border border-gray-700"
+>
+  <option value="dancer">Dancer / Family</option>
+  <option value="organizer">Organizer</option>
+  <option value="vendor">Vendor</option>
+  <option value="drum_group">Drum Group</option>
+</select>
 
           <button
             onClick={handleLogin}

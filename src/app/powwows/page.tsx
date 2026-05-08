@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 
 type Powwow = {
@@ -21,10 +22,24 @@ export default function PowwowsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [stateFilter, setStateFilter] = useState("");
+ const [user, setUser] = useState<User | null>(null);
+const [favoriteIds, setFavoriteIds] = useState<number[]>([]); 
 
   useEffect(() => {
-    fetchPowwows();
-  }, []);
+  checkUser();
+  fetchPowwows();
+}, []);
+const checkUser = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  setUser(user);
+
+  if (user) {
+    fetchFavorites(user.id);
+  }
+};
 
   const fetchPowwows = async () => {
     const { data, error } = await supabase
@@ -38,6 +53,18 @@ export default function PowwowsPage() {
       setPowwows(data || []);
     }
   };
+  const fetchFavorites = async (userId: string) => {
+  const { data, error } = await supabase
+    .from("favorites")
+    .select("powwow_id")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error(error);
+  } else {
+    setFavoriteIds(data.map((fav) => fav.powwow_id));
+  }
+};
 
   const filteredPowwows = powwows.filter((powwow) => {
     const search = searchTerm.toLowerCase();
@@ -124,6 +151,39 @@ export default function PowwowsPage() {
               <p className="text-gray-300 mt-2">📧 {powwow.contact}</p>
 
               <p className="mt-4 text-gray-200">{powwow.description}</p>
+              {user && (
+  <button
+    onClick={async () => {
+      const isFavorite = favoriteIds.includes(powwow.id);
+
+      if (isFavorite) {
+        await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("powwow_id", powwow.id);
+
+        setFavoriteIds(
+          favoriteIds.filter((id) => id !== powwow.id)
+        );
+      } else {
+        await supabase.from("favorites").insert([
+          {
+            user_id: user.id,
+            powwow_id: powwow.id,
+          },
+        ]);
+
+        setFavoriteIds([...favoriteIds, powwow.id]);
+      }
+    }}
+    className="mt-4 border border-gray-600 px-4 py-2 rounded-lg"
+  >
+    {favoriteIds.includes(powwow.id)
+      ? "❤️ Saved"
+      : "🤍 Save Powwow"}
+  </button>
+)}
             </div>
           </div>
         ))}
