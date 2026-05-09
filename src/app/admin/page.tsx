@@ -16,6 +16,7 @@ type Claim = {
 export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
 
   useEffect(() => {
     checkUser();
@@ -44,6 +45,7 @@ export default function AdminPage() {
 
     setUser(user);
     fetchClaims();
+    fetchProfiles();
   };
 
   const fetchClaims = async () => {
@@ -59,6 +61,19 @@ export default function AdminPage() {
       setClaims(data || []);
     }
   };
+  const fetchProfiles = async () => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    alert(error.message);
+  } else {
+    setProfiles(data || []);
+  }
+};
 
   const updateClaimStatus = async (
   claimId: number,
@@ -184,6 +199,58 @@ if (profileError) {
           ))}
         </div>
       </section>
+      <section className="mt-12">
+  <h2 className="text-2xl font-semibold mb-4">
+    Organizer Profiles
+  </h2>
+
+  <div className="grid gap-4">
+    {profiles.map((profile) => (
+      <div
+        key={profile.id}
+        className="border border-gray-700 rounded-2xl p-6 bg-gray-900"
+      >
+        <p className="text-gray-300">
+          <strong>Email:</strong> {profile.email}
+        </p>
+
+        <p className="text-gray-300">
+          <strong>Role:</strong> {profile.role}
+        </p>
+
+        <p className="text-gray-300">
+          <strong>Verified:</strong>{" "}
+          {profile.verified ? "Yes ✓" : "No"}
+        </p>
+
+        {profile.role === "organizer" && (
+          <button
+            onClick={async () => {
+              const { error } = await supabase
+                .from("profiles")
+                .update({
+                  verified: !profile.verified,
+                })
+                .eq("id", profile.id);
+
+              if (error) {
+                console.error(error);
+                alert(error.message);
+              } else {
+                fetchProfiles();
+              }
+            }}
+            className="mt-4 bg-blue-600 px-4 py-2 rounded-lg"
+          >
+            {profile.verified
+              ? "Remove Verification"
+              : "Verify Organizer"}
+          </button>
+        )}
+      </div>
+    ))}
+  </div>
+</section>
     </main>
   );
 }
